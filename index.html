@@ -1,0 +1,724 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>ตั้งค่าผู้เล่น — น้องรู้ทัน วิ่งฝ่าด่านความรู้</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Kanit:wght@500;600;700&family=Sarabun:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --sky-top:#8fd9ff;
+    --sky-bottom:#ffd6ec;
+    --accent:#ff9f5a;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html,body{
+    min-height:100%;
+    font-family:'Sarabun',sans-serif;
+    -webkit-tap-highlight-color: transparent;
+  }
+  body{
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    padding: 28px 16px;
+    position:relative;
+    overflow:hidden;
+    background: linear-gradient(-45deg, #8fd9ff, #ffd6ec, #ffe9b8, #c9f7e0);
+    background-size: 400% 400%;
+    animation: gradientShift 16s ease infinite;
+  }
+  @keyframes gradientShift{
+    0%{ background-position: 0% 50%; }
+    50%{ background-position: 100% 50%; }
+    100%{ background-position: 0% 50%; }
+  }
+  .bg-decor{
+    position:fixed; z-index:0; pointer-events:none;
+    font-size:2rem; opacity:0.5;
+    animation: floatDecor ease-in-out infinite;
+    filter: drop-shadow(0 4px 6px rgba(0,0,0,0.12));
+  }
+  @keyframes floatDecor{
+    0%{ transform: translateY(6vh) rotate(-6deg); }
+    50%{ transform: translateY(-6vh) rotate(6deg); }
+    100%{ transform: translateY(6vh) rotate(-6deg); }
+  }
+  .bg-sparkle{
+    position:fixed; z-index:0; pointer-events:none;
+    font-size:1.3rem; opacity:0.7;
+    animation: sparkleTwinkle ease-in-out infinite;
+  }
+  @keyframes sparkleTwinkle{
+    0%, 100%{ opacity:0.2; transform: scale(0.8); }
+    50%{ opacity:0.9; transform: scale(1.15); }
+  }
+  .bg-sun{
+    position:fixed; top:-60px; right:-40px;
+    width:180px; height:180px; border-radius:50%;
+    background: radial-gradient(circle, rgba(255,242,194,0.9), rgba(255,224,138,0.25) 60%, rgba(255,224,138,0) 75%);
+    pointer-events:none; z-index:0;
+  }
+  .bg-cloud{
+    position:fixed; z-index:0; pointer-events:none;
+    background: rgba(255,255,255,0.55);
+    border-radius:999px;
+    filter: blur(1px);
+    animation: cloudDrift linear infinite;
+  }
+  @keyframes cloudDrift{
+    from{ transform: translateX(-10vw); }
+    to{ transform: translateX(110vw); }
+  }
+  .page-title{
+    font-family:'Kanit'; font-weight:700; font-size:1.5rem; color:#0c2230;
+    text-align:center; margin-bottom:16px; position:relative; z-index:1;
+    text-shadow: 0 2px 0 rgba(255,255,255,0.5);
+  }
+  #card{
+    width:100%; max-width:440px;
+    background: linear-gradient(180deg, rgba(16,32,46,0.82), rgba(16,32,46,0.92));
+    border: 4px solid var(--accent);
+    border-radius: 30px 18px 30px 18px;
+    padding: 26px 24px 30px;
+    display:flex; flex-direction:column; align-items:center; gap:16px;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.25), inset 0 0 0 3px rgba(255,255,255,0.08);
+    position:relative; z-index:1;
+  }
+  #preview-holder{
+    width:100%; height:220px;
+    border-radius:16px;
+    overflow:hidden;
+    background: radial-gradient(ellipse at 50% 30%, rgba(255,255,255,0.14), rgba(255,255,255,0) 70%);
+    cursor: grab;
+    position:relative;
+  }
+  #preview-holder.dragging{ cursor: grabbing; }
+  #preview-holder canvas{ display:block; width:100% !important; height:100% !important; }
+  #preview-hint{
+    position:absolute; bottom:8px; left:50%; transform:translateX(-50%);
+    font-size:0.68rem; color:rgba(234,247,245,0.65);
+    font-family:'Sarabun'; font-weight:500;
+    pointer-events:none; opacity:0.85;
+    background: rgba(9,20,30,0.35); padding:3px 10px; border-radius:999px;
+    transition: opacity .4s ease;
+  }
+
+  .welcome-back{
+    font-family:'Kanit'; font-weight:600; font-size:0.92rem; color:#ffe08a;
+    text-align:center; display:none;
+  }
+
+  .field-label{
+    align-self:flex-start;
+    font-family:'Kanit'; font-weight:600; font-size:0.82rem;
+    color:#a9c3ca; letter-spacing:0.03em;
+    margin-bottom:-8px;
+  }
+  .name-row{ display:flex; gap:10px; width:100%; }
+  .name-row input{
+    flex:1; min-width:0;
+    font-family:'Sarabun'; font-size:0.95rem; font-weight:500;
+    padding: 11px 14px; border-radius:12px;
+    border:2px solid rgba(234,247,245,0.25);
+    background: rgba(255,255,255,0.92); color:#182a30;
+    outline:none;
+  }
+  .name-row input:focus{ border-color: var(--accent); }
+  .name-row input.shake{ animation: shakeX .35s; border-color:#ff6b6b; }
+  @keyframes shakeX{
+    0%,100%{ transform:translateX(0); }
+    25%{ transform:translateX(-6px); }
+    75%{ transform:translateX(6px); }
+  }
+  #name-warn{
+    color:#ffb0b0; font-size:0.8rem; display:none; text-align:center; margin-top:-8px;
+  }
+
+  .char-grid{
+    display:flex; gap:12px; flex-wrap:wrap; justify-content:center; width:100%;
+  }
+  .char-swatch{
+    background:none; border:none; cursor:pointer;
+    display:flex; flex-direction:column; align-items:center; gap:6px;
+    padding:4px; border-radius:12px;
+  }
+  .char-swatch .swatch-circle{
+    width:46px; height:46px; border-radius:50%;
+    background: var(--sw-color);
+    border:3px solid transparent;
+    box-shadow: inset 0 -6px 10px rgba(0,0,0,0.15);
+    transition: transform .15s, border-color .15s;
+    position:relative;
+  }
+  .char-swatch .swatch-circle::before, .char-swatch .swatch-circle::after{
+    content:''; position:absolute; top:16px; width:5px; height:5px; border-radius:50%; background:#1c2b30;
+  }
+  .char-swatch .swatch-circle::before{ left:13px; }
+  .char-swatch .swatch-circle::after{ right:13px; }
+  .char-swatch .swatch-label{ font-size:0.72rem; color:#dfeef0; font-family:'Sarabun'; font-weight:600; }
+  .char-swatch.selected .swatch-circle{ border-color:#fff; transform: scale(1.12); box-shadow: inset 0 -6px 10px rgba(0,0,0,0.15), 0 0 0 4px rgba(255,159,90,0.25); }
+  .char-swatch:hover .swatch-circle{ transform: scale(1.06); }
+  .char-swatch .swatch-circle.pop{ animation: popBounce .38s ease; }
+  @keyframes popBounce{
+    0%{ transform: scale(1); }
+    35%{ transform: scale(1.32); }
+    60%{ transform: scale(0.94); }
+    100%{ transform: scale(1.12); }
+  }
+  .acc-swatch .swatch-circle::before, .acc-swatch .swatch-circle::after{ display:none; }
+  .acc-swatch .swatch-circle{ font-size:1.3rem; box-shadow:none; display:flex; align-items:center; justify-content:center; background:rgba(255,255,255,0.12) !important; }
+
+  .btn-primary{
+    font-family:'Kanit'; font-weight:600; font-size:1.05rem;
+    background: var(--accent); color:#301a05; border:none;
+    padding:14px 34px; border-radius:14px; cursor:pointer;
+    box-shadow: 0 8px 22px rgba(255,159,90,0.35);
+    width:100%; margin-top:4px;
+  }
+  .btn-primary:hover{ filter:brightness(1.06); }
+
+  .storage-note{
+    font-size:0.72rem; color:#7f97a0; text-align:center; line-height:1.5;
+  }
+</style>
+</head>
+<body>
+
+<div class="bg-sun"></div>
+<div class="bg-cloud" style="width:90px; height:34px; top:8%; animation-duration:38s;"></div>
+<div class="bg-cloud" style="width:60px; height:24px; top:18%; animation-duration:52s; animation-delay:-15s;"></div>
+<div class="bg-cloud" style="width:110px; height:40px; top:32%; animation-duration:46s; animation-delay:-30s;"></div>
+<div class="bg-decor" style="left:6%; top:65%; animation-duration:8s;">🎈</div>
+<div class="bg-decor" style="left:88%; top:22%; animation-duration:10s; animation-delay:-3s;">🎈</div>
+<div class="bg-decor" style="left:10%; top:14%; animation-duration:9s; animation-delay:-5s;">🎀</div>
+<div class="bg-sparkle" style="left:80%; top:70%; animation-duration:2.4s;">⭐</div>
+<div class="bg-sparkle" style="left:15%; top:45%; animation-duration:3.1s; animation-delay:-1s;">✨</div>
+<div class="bg-sparkle" style="left:70%; top:12%; animation-duration:2.7s; animation-delay:-1.6s;">⭐</div>
+
+<h1 class="page-title">👋 ตั้งค่าผู้เล่นก่อนเข้าเกม</h1>
+
+<div id="card">
+  <div id="preview-holder">
+    <span id="preview-hint">🔄 ลากเพื่อหมุนดู</span>
+  </div>
+  <p class="welcome-back" id="welcome-back"></p>
+
+  <span class="field-label">ชื่อ-นามสกุล</span>
+  <div class="name-row">
+    <input type="text" id="first-name" placeholder="ชื่อจริง" maxlength="20">
+    <input type="text" id="last-name" placeholder="นามสกุล" maxlength="20">
+  </div>
+  <p id="name-warn">กรุณากรอกชื่อและนามสกุลก่อนเข้าเล่นนะครับ</p>
+
+  <span class="field-label">เลือกสีตัวละคร</span>
+  <div class="char-grid" id="char-grid"></div>
+
+  <span class="field-label">เลือกของแต่งตัว</span>
+  <div class="char-grid" id="acc-grid"></div>
+
+  <button class="btn-primary" id="enter-btn">เข้าเล่นเกม ▶</button>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+/* ============================================================
+   CHARACTER / ACCESSORY DEFINITIONS (kept identical to game.html)
+============================================================ */
+const CHARACTERS = [
+  { id:'mint',     label:'มิ้นท์',   color:0x54d6c2 },
+  { id:'peach',    label:'พีช',      color:0xff9f5a },
+  { id:'sky',      label:'ฟ้า',      color:0x58b6f0 },
+  { id:'lavender', label:'ม่วง',      color:0xb48ce0 },
+  { id:'lemon',    label:'เลม่อน',   color:0xf4d449 }
+];
+const ACCESSORIES = [
+  { id:'none',     label:'ไม่ใส่',        emoji:'🚫' },
+  { id:'cap',      label:'หมวก',          emoji:'🧢' },
+  { id:'bow',      label:'โบว์',          emoji:'🎀' },
+  { id:'glasses',  label:'แว่นกันแดด',    emoji:'🕶️' }
+];
+
+/* ============================================================
+   3D PREVIEW SCENE (small canvas, gentle idle rotation)
+============================================================ */
+const holder = document.getElementById('preview-holder');
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(45, holder.clientWidth/holder.clientHeight, 0.1, 50);
+camera.position.set(0, 1.1, 4.2);
+camera.lookAt(0, 0.85, 0);
+
+const renderer = new THREE.WebGLRenderer({ antialias:true, alpha:true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(holder.clientWidth, holder.clientHeight);
+holder.appendChild(renderer.domElement);
+
+scene.add(new THREE.HemisphereLight(0xffffff, 0xffd0e6, 1.0));
+const sun = new THREE.DirectionalLight(0xffffff, 0.8);
+sun.position.set(3, 5, 4);
+scene.add(sun);
+
+/* ---------- ground disc with a simple grass texture ---------- */
+function makeGrassTexture(){
+  const c = document.createElement('canvas');
+  c.width = 128; c.height = 128;
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = '#7fcf7c';
+  ctx.fillRect(0, 0, 128, 128);
+  ctx.fillStyle = 'rgba(255,255,255,0.08)';
+  for(let i=0;i<40;i++){
+    ctx.beginPath();
+    ctx.arc(Math.random()*128, Math.random()*128, Math.random()*10, 0, Math.PI*2);
+    ctx.fill();
+  }
+  return new THREE.CanvasTexture(c);
+}
+const ground = new THREE.Mesh(
+  new THREE.CircleGeometry(3.4, 32),
+  new THREE.MeshStandardMaterial({ map: makeGrassTexture(), roughness:0.9 })
+);
+ground.rotation.x = -Math.PI / 2;
+ground.position.y = -0.02;
+scene.add(ground);
+
+/* ---------- glowing sun disc in the corner of the preview sky ---------- */
+const sunDisc = new THREE.Mesh(
+  new THREE.CircleGeometry(0.6, 24),
+  new THREE.MeshBasicMaterial({ color:0xfff2c2, transparent:true, opacity:0.9 })
+);
+const sunHalo = new THREE.Mesh(
+  new THREE.CircleGeometry(0.95, 24),
+  new THREE.MeshBasicMaterial({ color:0xffe08a, transparent:true, opacity:0.35 })
+);
+sunHalo.position.z = -0.05;
+const sunGroup = new THREE.Group();
+sunGroup.add(sunHalo, sunDisc);
+sunGroup.position.set(1.6, 1.7, -2.4);
+scene.add(sunGroup);
+
+/* ---------- tiny decorative trees flanking the character ---------- */
+function makeMiniTree(){
+  const g = new THREE.Group();
+  const trunk = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.05, 0.07, 0.4, 8),
+    new THREE.MeshStandardMaterial({ color:0x8a5a34, roughness:0.9 })
+  );
+  trunk.position.y = 0.2;
+  g.add(trunk);
+  const leafColors = [0x4fb85e, 0x5fca6b];
+  for(let i=0;i<2;i++){
+    const leaf = new THREE.Mesh(
+      new THREE.SphereGeometry(0.22 - i*0.04, 10, 10),
+      new THREE.MeshStandardMaterial({ color: leafColors[i], roughness:0.85, flatShading:true })
+    );
+    leaf.position.set(0, 0.48 + i*0.16, 0);
+    g.add(leaf);
+  }
+  return g;
+}
+const treeL = makeMiniTree();
+treeL.position.set(-1.55, 0, -0.6);
+treeL.scale.setScalar(1.1);
+scene.add(treeL);
+const treeR = makeMiniTree();
+treeR.position.set(1.55, 0, -0.9);
+treeR.scale.setScalar(0.9);
+scene.add(treeR);
+
+/* ---------- tiny background critters wandering in the distance ---------- */
+function makeCritter(color){
+  const g = new THREE.Group();
+  const mat = new THREE.MeshStandardMaterial({ color, roughness:0.6 });
+  const eyeMat = new THREE.MeshStandardMaterial({ color:0x1c2b30, roughness:0.4 });
+
+  const body = new THREE.Mesh(new THREE.SphereGeometry(0.16, 12, 12), mat);
+  body.scale.set(1, 0.85, 1);
+  body.position.y = 0.16;
+  g.add(body);
+
+  [[-0.08],[0.08]].forEach(([dx])=>{
+    const ear = new THREE.Mesh(new THREE.SphereGeometry(0.045, 8, 8), mat);
+    ear.position.set(dx, 0.29, 0.02);
+    g.add(ear);
+  });
+
+  [[-0.055],[0.055]].forEach(([dx])=>{
+    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.022, 8, 8), eyeMat);
+    eye.position.set(dx, 0.18, 0.145);
+    g.add(eye);
+  });
+
+  return g;
+}
+
+const critters = [
+  { mesh: makeCritter(0xffb84d), z:-1.3, speed:0.18, scale:0.55, phase:0 },
+  { mesh: makeCritter(0xff8fa3), z:-1.65, speed:-0.13, scale:0.42, phase:2.1 },
+  { mesh: makeCritter(0x9d7bd8), z:-1.05, speed:0.22, scale:0.48, phase:4.3 }
+];
+critters.forEach(c => {
+  c.mesh.scale.setScalar(c.scale);
+  c.mesh.position.set((Math.random()-0.5)*3, 0, c.z);
+  scene.add(c.mesh);
+});
+
+/* ---------- soft contact shadow under the character ---------- */
+const shadowBlob = new THREE.Mesh(
+  new THREE.CircleGeometry(0.4, 24),
+  new THREE.MeshBasicMaterial({ color:0x0b1520, transparent:true, opacity:0.28 })
+);
+shadowBlob.rotation.x = -Math.PI / 2;
+shadowBlob.position.y = -0.01;
+scene.add(shadowBlob);
+
+const player = new THREE.Group();
+const bodyMat = new THREE.MeshStandardMaterial({ color:0x54d6c2, roughness:0.45, metalness:0.05 });
+const bellyMat = new THREE.MeshStandardMaterial({ color:0xeafcf7, roughness:0.55 });
+const darkMat = new THREE.MeshStandardMaterial({ color:0x1c2b30, roughness:0.35 });
+const cheekMat = new THREE.MeshStandardMaterial({ color:0xffb3c6, roughness:0.65, transparent:true, opacity:0.85 });
+const shineMatEye = new THREE.MeshStandardMaterial({ color:0xffffff, roughness:0.2 });
+const mouthMat = new THREE.MeshStandardMaterial({ color:0x8a5a52, roughness:0.5 });
+
+// chubby round belly — plump and proud, sized to balance the head above it
+const torso = new THREE.Mesh(new THREE.SphereGeometry(0.44, 18, 18), bodyMat);
+torso.scale.set(1.28, 1.02, 1.18);
+torso.position.set(0, 0.56, 0.06);
+player.add(torso);
+
+const belly = new THREE.Mesh(new THREE.SphereGeometry(0.3, 12, 12), bellyMat);
+belly.position.set(0, 0.54, 0.4);
+belly.scale.z = 0.42;
+player.add(belly);
+
+// three cute cream spots on the back for a little pattern
+[
+  { pos:[0.15, 0.66, -0.34] },
+  { pos:[-0.16, 0.5, -0.36] },
+  { pos:[0.04, 0.36, -0.37] }
+].forEach(spot => {
+  const s = new THREE.Mesh(new THREE.CircleGeometry(0.06, 12), bellyMat);
+  s.position.set(spot.pos[0], spot.pos[1], spot.pos[2]);
+  s.lookAt(spot.pos[0], spot.pos[1], spot.pos[2] - 2);
+  player.add(s);
+});
+
+// baby head — big and round, now nicely balanced against the bigger body
+const head = new THREE.Mesh(new THREE.SphereGeometry(0.6, 22, 22), bodyMat);
+head.position.set(0, 1.02, 0.02);
+player.add(head);
+
+// a little cowlick tuft on top of the head for extra charm
+const tuft = new THREE.Mesh(new THREE.SphereGeometry(0.09, 10, 10), bodyMat);
+tuft.scale.set(0.55, 1.3, 0.55);
+tuft.position.set(0.05, 1.6, 0.22);
+tuft.rotation.x = -0.4;
+player.add(tuft);
+
+// big floppy elephant ears on either side of the head
+const earGeo = new THREE.SphereGeometry(0.3, 16, 16);
+const earL = new THREE.Mesh(earGeo, bodyMat);
+earL.scale.set(1, 1.2, 0.2);
+earL.position.set(-0.6, 1.06, -0.04);
+earL.rotation.y = 0.55;
+player.add(earL);
+const earInnerL = new THREE.Mesh(new THREE.SphereGeometry(0.2, 14, 14), bellyMat);
+earInnerL.scale.set(1, 1.2, 0.15);
+earInnerL.position.set(-0.56, 1.06, 0.04);
+earInnerL.rotation.y = 0.55;
+player.add(earInnerL);
+const earR = earL.clone();
+earR.position.x = 0.6;
+earR.rotation.y = -0.55;
+player.add(earR);
+const earInnerR = earInnerL.clone();
+earInnerR.position.x = 0.56;
+earInnerR.rotation.y = -0.55;
+player.add(earInnerR);
+
+// short trunk made from ONE smooth stretched sphere — no cylinder facets and
+// no seam between separate pieces, so it reads as one continuous rounded shape
+const trunk = new THREE.Mesh(new THREE.SphereGeometry(0.1, 24, 24), bodyMat);
+trunk.scale.set(0.75, 1.9, 0.75);
+trunk.position.set(0, 0.75, 0.54);
+player.add(trunk);
+
+// huge eyes set close together, almost touching — the core of the baby-chibi look
+[[-0.15],[0.15]].forEach(([dx]) => {
+  const eyeWhite = new THREE.Mesh(new THREE.SphereGeometry(0.17, 14, 14), bellyMat);
+  eyeWhite.position.set(dx, 1.1, 0.5);
+  player.add(eyeWhite);
+  const pupil = new THREE.Mesh(new THREE.SphereGeometry(0.095, 10, 10), darkMat);
+  pupil.position.set(dx, 1.08, 0.61);
+  player.add(pupil);
+  const shine = new THREE.Mesh(new THREE.SphereGeometry(0.032, 8, 8), shineMatEye);
+  shine.position.set(dx - 0.03, 1.13, 0.67);
+  player.add(shine);
+});
+
+[[-0.32],[0.32]].forEach(([dx])=>{
+  const cheek = new THREE.Mesh(new THREE.CircleGeometry(0.1, 14), cheekMat);
+  cheek.position.set(dx, 0.95, 0.48);
+  cheek.lookAt(dx, 0.95, 2);
+  player.add(cheek);
+});
+
+// (no separate mouth — the trunk covers this area, avoiding overlap)
+
+// small nub arms & sturdy legs — bigger, steadier feet to support the round belly
+const armGeo = new THREE.SphereGeometry(0.1, 10, 10);
+const armL = new THREE.Mesh(armGeo, bodyMat);
+armL.scale.set(1, 1.25, 1);
+armL.position.set(-0.44, 0.6, 0.04);
+player.add(armL);
+const armR = armL.clone();
+armR.position.x = 0.44;
+player.add(armR);
+
+const legGeo = new THREE.SphereGeometry(0.18, 10, 10);
+const legL = new THREE.Mesh(legGeo, bodyMat);
+legL.scale.set(1, 1.05, 1);
+legL.position.set(-0.22, 0.14, 0);
+player.add(legL);
+const legR = legL.clone();
+legR.position.x = 0.22;
+player.add(legR);
+
+// bigger, sturdier feet for a stable stance under the chubby belly
+[[-0.22],[0.22]].forEach(([dx])=>{
+  const foot = new THREE.Mesh(new THREE.SphereGeometry(0.14, 10, 10), bellyMat);
+  foot.scale.set(1.15, 0.5, 1.15);
+  foot.position.set(dx, 0.03, 0.03);
+  player.add(foot);
+});
+
+// small tail with a fluffy tuft at the tip
+const tail = new THREE.Mesh(new THREE.SphereGeometry(0.09, 10, 10), bodyMat);
+tail.position.set(0, 0.54, -0.42);
+tail.scale.set(0.85, 0.85, 1.25);
+player.add(tail);
+const tailTuft = new THREE.Mesh(new THREE.SphereGeometry(0.065, 8, 8), darkMat);
+tailTuft.position.set(0, 0.47, -0.5);
+player.add(tailTuft);
+
+scene.add(player);
+
+function buildAccessories(){
+  const acc = {};
+  const capGroup = new THREE.Group();
+  const capMat = new THREE.MeshStandardMaterial({ color:0xff6b6b, roughness:0.5 });
+  const capTop = new THREE.Mesh(new THREE.SphereGeometry(0.5, 16, 16, 0, Math.PI*2, 0, Math.PI/2.1), capMat);
+  capTop.position.set(0, 1.59, 0.02);
+  capGroup.add(capTop);
+  const brim = new THREE.Mesh(new THREE.CylinderGeometry(0.56, 0.56, 0.07, 20), capMat);
+  brim.position.set(0, 1.56, 0.02);
+  capGroup.add(brim);
+  acc.cap = capGroup;
+
+  const bowGroup = new THREE.Group();
+  const bowMat = new THREE.MeshStandardMaterial({ color:0xff6ea8, roughness:0.5 });
+  const loopL = new THREE.Mesh(new THREE.SphereGeometry(0.1, 10, 10), bowMat);
+  loopL.scale.set(1.3, 0.9, 0.55);
+  loopL.position.set(0.15, 1.65, 0.12);
+  bowGroup.add(loopL);
+  const loopR = loopL.clone();
+  loopR.position.set(0.3, 1.65, 0.12);
+  bowGroup.add(loopR);
+  const knot = new THREE.Mesh(new THREE.SphereGeometry(0.07, 8, 8), bowMat);
+  knot.position.set(0.225, 1.65, 0.14);
+  bowGroup.add(knot);
+  acc.bow = bowGroup;
+
+  const glassGroup = new THREE.Group();
+  const glassMat = new THREE.MeshStandardMaterial({ color:0x1c2b30, roughness:0.25 });
+  const lensL = new THREE.Mesh(new THREE.SphereGeometry(0.135, 10, 10), glassMat);
+  lensL.scale.set(1, 1, 0.35);
+  lensL.position.set(-0.15, 1.10, 0.61);
+  glassGroup.add(lensL);
+  const lensR = lensL.clone();
+  lensR.position.set(0.15, 1.10, 0.61);
+  glassGroup.add(lensR);
+  const bridge = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.03, 0.03), glassMat);
+  bridge.position.set(0, 1.10, 0.63);
+  glassGroup.add(bridge);
+  acc.glasses = glassGroup;
+
+  Object.values(acc).forEach(g => { g.visible = false; player.add(g); });
+  return acc;
+}
+const accessoryMeshes = buildAccessories();
+
+function applyCharacter(charId){
+  const c = CHARACTERS.find(x => x.id === charId) || CHARACTERS[0];
+  bodyMat.color.setHex(c.color);
+}
+function applyAccessory(accId){
+  Object.entries(accessoryMeshes).forEach(([id, g]) => { g.visible = (id === accId); });
+}
+
+function onResize(){
+  camera.aspect = holder.clientWidth/holder.clientHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(holder.clientWidth, holder.clientHeight);
+}
+window.addEventListener('resize', onResize);
+
+const clock = new THREE.Clock();
+let userRotationY = 0;
+let isDragging = false;
+let lastPointerX = 0;
+let idleResumeDelay = 0;
+
+function animate(){
+  requestAnimationFrame(animate);
+  const t = clock.getElapsedTime();
+  const dt = clock.getDelta();
+  if(!isDragging){
+    idleResumeDelay = Math.max(0, idleResumeDelay - dt);
+    if(idleResumeDelay <= 0){
+      userRotationY += (Math.sin(t*0.6)*0.35 - userRotationY) * 0.02;
+    }
+  }
+  player.rotation.y = userRotationY;
+  player.position.y = Math.sin(t*1.6)*0.04;
+  shadowBlob.scale.setScalar(1 + Math.sin(t*1.6)*0.06);
+
+  critters.forEach(c => {
+    c.mesh.position.x += c.speed * dt;
+    if(c.mesh.position.x > 1.9){ c.speed = -Math.abs(c.speed); c.mesh.rotation.y = Math.PI; }
+    if(c.mesh.position.x < -1.9){ c.speed = Math.abs(c.speed); c.mesh.rotation.y = 0; }
+    c.mesh.position.y = Math.abs(Math.sin(t*3 + c.phase)) * 0.05;
+  });
+
+  renderer.render(scene, camera);
+}
+animate();
+
+/* ---------- drag-to-rotate the preview character ---------- */
+function onDragStart(clientX){
+  isDragging = true;
+  lastPointerX = clientX;
+  holder.classList.add('dragging');
+  const hint = document.getElementById('preview-hint');
+  if(hint) hint.style.opacity = '0';
+}
+function onDragMove(clientX){
+  if(!isDragging) return;
+  const delta = clientX - lastPointerX;
+  lastPointerX = clientX;
+  userRotationY += delta * 0.012;
+}
+function onDragEnd(){
+  isDragging = false;
+  idleResumeDelay = 1.6;
+  holder.classList.remove('dragging');
+}
+holder.addEventListener('mousedown', e => onDragStart(e.clientX));
+window.addEventListener('mousemove', e => onDragMove(e.clientX));
+window.addEventListener('mouseup', onDragEnd);
+holder.addEventListener('touchstart', e => onDragStart(e.touches[0].clientX), { passive:true });
+holder.addEventListener('touchmove', e => onDragMove(e.touches[0].clientX), { passive:true });
+holder.addEventListener('touchend', onDragEnd);
+
+
+/* ============================================================
+   PROFILE FORM
+============================================================ */
+let selectedCharacter = CHARACTERS[0].id;
+let selectedAccessory = ACCESSORIES[0].id;
+
+const charGrid = document.getElementById('char-grid');
+CHARACTERS.forEach(c => {
+  const btn = document.createElement('button');
+  btn.className = 'char-swatch';
+  btn.dataset.id = c.id;
+  btn.style.setProperty('--sw-color', '#' + c.color.toString(16).padStart(6,'0'));
+  btn.innerHTML = `<span class="swatch-circle"></span><span class="swatch-label">${c.label}</span>`;
+  btn.addEventListener('click', () => {
+    selectedCharacter = c.id;
+    applyCharacter(c.id);
+    [...charGrid.children].forEach(el => el.classList.toggle('selected', el.dataset.id === c.id));
+    const circle = btn.querySelector('.swatch-circle');
+    circle.classList.remove('pop'); void circle.offsetWidth; circle.classList.add('pop');
+  });
+  charGrid.appendChild(btn);
+});
+
+const accGrid = document.getElementById('acc-grid');
+ACCESSORIES.forEach(a => {
+  const btn = document.createElement('button');
+  btn.className = 'char-swatch acc-swatch';
+  btn.dataset.id = a.id;
+  btn.innerHTML = `<span class="swatch-circle">${a.emoji}</span><span class="swatch-label">${a.label}</span>`;
+  btn.addEventListener('click', () => {
+    selectedAccessory = a.id;
+    applyAccessory(a.id);
+    [...accGrid.children].forEach(el => el.classList.toggle('selected', el.dataset.id === a.id));
+    const circle = btn.querySelector('.swatch-circle');
+    circle.classList.remove('pop'); void circle.offsetWidth; circle.classList.add('pop');
+  });
+  accGrid.appendChild(btn);
+});
+
+function markSelected(){
+  [...charGrid.children].forEach(el => el.classList.toggle('selected', el.dataset.id === selectedCharacter));
+  [...accGrid.children].forEach(el => el.classList.toggle('selected', el.dataset.id === selectedAccessory));
+  applyCharacter(selectedCharacter);
+  applyAccessory(selectedAccessory);
+}
+markSelected();
+
+const firstNameInput = document.getElementById('first-name');
+const lastNameInput = document.getElementById('last-name');
+const nameWarn = document.getElementById('name-warn');
+const welcomeBack = document.getElementById('welcome-back');
+
+async function loadSavedProfile(){
+  try{
+    const res = await window.storage.get('profile', false);
+    if(res && res.value){
+      const p = JSON.parse(res.value);
+      firstNameInput.value = p.first || '';
+      lastNameInput.value = p.last || '';
+      if(p.character) selectedCharacter = p.character;
+      if(p.accessory) selectedAccessory = p.accessory;
+      markSelected();
+      if(p.first){
+        welcomeBack.textContent = `ยินดีต้อนรับกลับ, ${p.first}! แก้ไขข้อมูลได้ตามใจเลยนะ`;
+        welcomeBack.style.display = 'block';
+      }
+    }
+  } catch(err){
+    // no saved profile yet on this device/session — that's fine
+  }
+}
+loadSavedProfile();
+
+document.getElementById('enter-btn').addEventListener('click', async () => {
+  const first = firstNameInput.value.trim();
+  const last = lastNameInput.value.trim();
+  if(!first || !last){
+    nameWarn.style.display = 'block';
+    [firstNameInput, lastNameInput].forEach(inp => {
+      if(!inp.value.trim()){
+        inp.classList.remove('shake'); void inp.offsetWidth; inp.classList.add('shake');
+      }
+    });
+    return;
+  }
+  nameWarn.style.display = 'none';
+
+  try{
+    await window.storage.set('profile', JSON.stringify({
+      first, last, character: selectedCharacter, accessory: selectedAccessory
+    }), false);
+  } catch(err){
+    // storage unavailable — the query string below still carries the data through
+  }
+
+  const params = new URLSearchParams({
+    first, last, character: selectedCharacter, accessory: selectedAccessory
+  });
+  window.location.href = 'game.html?' + params.toString();
+});
+</script>
+</body>
+</html>
