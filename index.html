@@ -176,6 +176,10 @@
     width:100%; margin-top:4px;
   }
   .btn-primary:hover{ filter:brightness(1.06); }
+
+  .storage-note{
+    font-size:0.72rem; color:#7f97a0; text-align:center; line-height:1.5;
+  }
 </style>
 </head>
 <body>
@@ -216,7 +220,19 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<!-- โหลด Supabase Client SDK สำหรับระบบหลังบ้าน -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
+/* ============================================================
+   SUPABASE BACKEND CONFIGURATION
+============================================================ */
+const SUPABASE_URL = 'https://ilsgtjhzykqehnfhmuev.supabase.co';
+const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY'; // เปลี่ยนเป็น Anon Key ของคุณ
+const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+/* ============================================================
+   CHARACTER / ACCESSORY DEFINITIONS (kept identical to game.html)
+============================================================ */
 const CHARACTERS = [
   { id:'mint',     label:'มิ้นท์',   color:0x54d6c2 },
   { id:'peach',    label:'พีช',      color:0xff9f5a },
@@ -231,6 +247,9 @@ const ACCESSORIES = [
   { id:'glasses',  label:'แว่นกันแดด',    emoji:'🕶️' }
 ];
 
+/* ============================================================
+   3D PREVIEW SCENE (small canvas, gentle idle rotation)
+============================================================ */
 const holder = document.getElementById('preview-holder');
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(45, holder.clientWidth/holder.clientHeight, 0.1, 50);
@@ -247,6 +266,7 @@ const sun = new THREE.DirectionalLight(0xffffff, 0.8);
 sun.position.set(3, 5, 4);
 scene.add(sun);
 
+/* ---------- ground disc with a simple grass texture ---------- */
 function makeGrassTexture(){
   const c = document.createElement('canvas');
   c.width = 128; c.height = 128;
@@ -269,6 +289,88 @@ ground.rotation.x = -Math.PI / 2;
 ground.position.y = -0.02;
 scene.add(ground);
 
+/* ---------- glowing sun disc in the corner of the preview sky ---------- */
+const sunDisc = new THREE.Mesh(
+  new THREE.CircleGeometry(0.6, 24),
+  new THREE.MeshBasicMaterial({ color:0xfff2c2, transparent:true, opacity:0.9 })
+);
+const sunHalo = new THREE.Mesh(
+  new THREE.CircleGeometry(0.95, 24),
+  new THREE.MeshBasicMaterial({ color:0xffe08a, transparent:true, opacity:0.35 })
+);
+sunHalo.position.z = -0.05;
+const sunGroup = new THREE.Group();
+sunGroup.add(sunHalo, sunDisc);
+sunGroup.position.set(1.6, 1.7, -2.4);
+scene.add(sunGroup);
+
+/* ---------- tiny decorative trees flanking the character ---------- */
+function makeMiniTree(){
+  const g = new THREE.Group();
+  const trunk = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.05, 0.07, 0.4, 8),
+    new THREE.MeshStandardMaterial({ color:0x8a5a34, roughness:0.9 })
+  );
+  trunk.position.y = 0.2;
+  g.add(trunk);
+  const leafColors = [0x4fb85e, 0x5fca6b];
+  for(let i=0;i<2;i++){
+    const leaf = new THREE.Mesh(
+      new THREE.SphereGeometry(0.22 - i*0.04, 10, 10),
+      new THREE.MeshStandardMaterial({ color: leafColors[i], roughness:0.85, flatShading:true })
+    );
+    leaf.position.set(0, 0.48 + i*0.16, 0);
+    g.add(leaf);
+  }
+  return g;
+}
+const treeL = makeMiniTree();
+treeL.position.set(-1.55, 0, -0.6);
+treeL.scale.setScalar(1.1);
+scene.add(treeL);
+const treeR = makeMiniTree();
+treeR.position.set(1.55, 0, -0.9);
+treeR.scale.setScalar(0.9);
+scene.add(treeR);
+
+/* ---------- tiny background critters wandering in the distance ---------- */
+function makeCritter(color){
+  const g = new THREE.Group();
+  const mat = new THREE.MeshStandardMaterial({ color, roughness:0.6 });
+  const eyeMat = new THREE.MeshStandardMaterial({ color:0x1c2b30, roughness:0.4 });
+
+  const body = new THREE.Mesh(new THREE.SphereGeometry(0.16, 12, 12), mat);
+  body.scale.set(1, 0.85, 1);
+  body.position.y = 0.16;
+  g.add(body);
+
+  [[-0.08],[0.08]].forEach(([dx])=>{
+    const ear = new THREE.Mesh(new THREE.SphereGeometry(0.045, 8, 8), mat);
+    ear.position.set(dx, 0.29, 0.02);
+    g.add(ear);
+  });
+
+  [[-0.055],[0.055]].forEach(([dx])=>{
+    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.022, 8, 8), eyeMat);
+    eye.position.set(dx, 0.18, 0.145);
+    g.add(eye);
+  });
+
+  return g;
+}
+
+const critters = [
+  { mesh: makeCritter(0xffb84d), z:-1.3, speed:0.18, scale:0.55, phase:0 },
+  { mesh: makeCritter(0xff8fa3), z:-1.65, speed:-0.13, scale:0.42, phase:2.1 },
+  { mesh: makeCritter(0x9d7bd8), z:-1.05, speed:0.22, scale:0.48, phase:4.3 }
+];
+critters.forEach(c => {
+  c.mesh.scale.setScalar(c.scale);
+  c.mesh.position.set((Math.random()-0.5)*3, 0, c.z);
+  scene.add(c.mesh);
+});
+
+/* ---------- soft contact shadow under the character ---------- */
 const shadowBlob = new THREE.Mesh(
   new THREE.CircleGeometry(0.4, 24),
   new THREE.MeshBasicMaterial({ color:0x0b1520, transparent:true, opacity:0.28 })
@@ -283,6 +385,7 @@ const bellyMat = new THREE.MeshStandardMaterial({ color:0xeafcf7, roughness:0.55
 const darkMat = new THREE.MeshStandardMaterial({ color:0x1c2b30, roughness:0.35 });
 const cheekMat = new THREE.MeshStandardMaterial({ color:0xffb3c6, roughness:0.65, transparent:true, opacity:0.85 });
 const shineMatEye = new THREE.MeshStandardMaterial({ color:0xffffff, roughness:0.2 });
+const mouthMat = new THREE.MeshStandardMaterial({ color:0x8a5a52, roughness:0.5 });
 
 const torso = new THREE.Mesh(new THREE.SphereGeometry(0.44, 18, 18), bodyMat);
 torso.scale.set(1.28, 1.02, 1.18);
@@ -294,9 +397,46 @@ belly.position.set(0, 0.54, 0.4);
 belly.scale.z = 0.42;
 player.add(belly);
 
+[
+  { pos:[0.15, 0.66, -0.34] },
+  { pos:[-0.16, 0.5, -0.36] },
+  { pos:[0.04, 0.36, -0.37] }
+].forEach(spot => {
+  const s = new THREE.Mesh(new THREE.CircleGeometry(0.06, 12), bellyMat);
+  s.position.set(spot.pos[0], spot.pos[1], spot.pos[2]);
+  s.lookAt(spot.pos[0], spot.pos[1], spot.pos[2] - 2);
+  player.add(s);
+});
+
 const head = new THREE.Mesh(new THREE.SphereGeometry(0.6, 22, 22), bodyMat);
 head.position.set(0, 1.02, 0.02);
 player.add(head);
+
+const tuft = new THREE.Mesh(new THREE.SphereGeometry(0.09, 10, 10), bodyMat);
+tuft.scale.set(0.55, 1.3, 0.55);
+tuft.position.set(0.05, 1.6, 0.22);
+tuft.rotation.x = -0.4;
+player.add(tuft);
+
+const earGeo = new THREE.SphereGeometry(0.3, 16, 16);
+const earL = new THREE.Mesh(earGeo, bodyMat);
+earL.scale.set(1, 1.2, 0.2);
+earL.position.set(-0.6, 1.06, -0.04);
+earL.rotation.y = 0.55;
+player.add(earL);
+const earInnerL = new THREE.Mesh(new THREE.SphereGeometry(0.2, 14, 14), bellyMat);
+earInnerL.scale.set(1, 1.2, 0.15);
+earInnerL.position.set(-0.56, 1.06, 0.04);
+earInnerL.rotation.y = 0.55;
+player.add(earInnerL);
+const earR = earL.clone();
+earR.position.x = 0.6;
+earR.rotation.y = -0.55;
+player.add(earR);
+const earInnerR = earInnerL.clone();
+earInnerR.position.x = 0.56;
+earInnerR.rotation.y = -0.55;
+player.add(earInnerR);
 
 const trunk = new THREE.Mesh(new THREE.SphereGeometry(0.1, 24, 24), bodyMat);
 trunk.scale.set(0.75, 1.9, 0.75);
@@ -314,6 +454,46 @@ player.add(trunk);
   shine.position.set(dx - 0.03, 1.13, 0.67);
   player.add(shine);
 });
+
+[[-0.32],[0.32]].forEach(([dx])=>{
+  const cheek = new THREE.Mesh(new THREE.CircleGeometry(0.1, 14), cheekMat);
+  cheek.position.set(dx, 0.95, 0.48);
+  cheek.lookAt(dx, 0.95, 2);
+  player.add(cheek);
+});
+
+const armGeo = new THREE.SphereGeometry(0.1, 10, 10);
+const armL = new THREE.Mesh(armGeo, bodyMat);
+armL.scale.set(1, 1.25, 1);
+armL.position.set(-0.44, 0.6, 0.04);
+player.add(armL);
+const armR = armL.clone();
+armR.position.x = 0.44;
+player.add(armR);
+
+const legGeo = new THREE.SphereGeometry(0.18, 10, 10);
+const legL = new THREE.Mesh(legGeo, bodyMat);
+legL.scale.set(1, 1.05, 1);
+legL.position.set(-0.22, 0.14, 0);
+player.add(legL);
+const legR = legL.clone();
+legR.position.x = 0.22;
+player.add(legR);
+
+[[-0.22],[0.22]].forEach(([dx])=>{
+  const foot = new THREE.Mesh(new THREE.SphereGeometry(0.14, 10, 10), bellyMat);
+  foot.scale.set(1.15, 0.5, 1.15);
+  foot.position.set(dx, 0.03, 0.03);
+  player.add(foot);
+});
+
+const tail = new THREE.Mesh(new THREE.SphereGeometry(0.09, 10, 10), bodyMat);
+tail.position.set(0, 0.54, -0.42);
+tail.scale.set(0.85, 0.85, 1.25);
+player.add(tail);
+const tailTuft = new THREE.Mesh(new THREE.SphereGeometry(0.065, 8, 8), darkMat);
+tailTuft.position.set(0, 0.47, -0.5);
+player.add(tailTuft);
 
 scene.add(player);
 
@@ -352,6 +532,9 @@ function buildAccessories(){
   const lensR = lensL.clone();
   lensR.position.set(0.15, 1.10, 0.61);
   glassGroup.add(lensR);
+  const bridge = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.03, 0.03), glassMat);
+  bridge.position.set(0, 1.10, 0.63);
+  glassGroup.add(bridge);
   acc.glasses = glassGroup;
 
   Object.values(acc).forEach(g => { g.visible = false; player.add(g); });
@@ -367,25 +550,73 @@ function applyAccessory(accId){
   Object.entries(accessoryMeshes).forEach(([id, g]) => { g.visible = (id === accId); });
 }
 
+function onResize(){
+  camera.aspect = holder.clientWidth/holder.clientHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(holder.clientWidth, holder.clientHeight);
+}
+window.addEventListener('resize', onResize);
+
+const clock = new THREE.Clock();
 let userRotationY = 0;
 let isDragging = false;
 let lastPointerX = 0;
+let idleResumeDelay = 0;
 
 function animate(){
   requestAnimationFrame(animate);
+  const t = clock.getElapsedTime();
+  const dt = clock.getDelta();
+  if(!isDragging){
+    idleResumeDelay = Math.max(0, idleResumeDelay - dt);
+    if(idleResumeDelay <= 0){
+      userRotationY += (Math.sin(t*0.6)*0.35 - userRotationY) * 0.02;
+    }
+  }
   player.rotation.y = userRotationY;
+  player.position.y = Math.sin(t*1.6)*0.04;
+  shadowBlob.scale.setScalar(1 + Math.sin(t*1.6)*0.06);
+
+  critters.forEach(c => {
+    c.mesh.position.x += c.speed * dt;
+    if(c.mesh.position.x > 1.9){ c.speed = -Math.abs(c.speed); c.mesh.rotation.y = Math.PI; }
+    if(c.mesh.position.x < -1.9){ c.speed = Math.abs(c.speed); c.mesh.rotation.y = 0; }
+    c.mesh.position.y = Math.abs(Math.sin(t*3 + c.phase)) * 0.05;
+  });
+
   renderer.render(scene, camera);
 }
 animate();
 
-holder.addEventListener('mousedown', e => { isDragging = true; lastPointerX = e.clientX; });
-window.addEventListener('mousemove', e => {
+function onDragStart(clientX){
+  isDragging = true;
+  lastPointerX = clientX;
+  holder.classList.add('dragging');
+  const hint = document.getElementById('preview-hint');
+  if(hint) hint.style.opacity = '0';
+}
+function onDragMove(clientX){
   if(!isDragging) return;
-  userRotationY += (e.clientX - lastPointerX) * 0.012;
-  lastPointerX = e.clientX;
-});
-window.addEventListener('mouseup', () => { isDragging = false; });
+  const delta = clientX - lastPointerX;
+  lastPointerX = clientX;
+  userRotationY += delta * 0.012;
+}
+function onDragEnd(){
+  isDragging = false;
+  idleResumeDelay = 1.6;
+  holder.classList.remove('dragging');
+}
+holder.addEventListener('mousedown', e => onDragStart(e.clientX));
+window.addEventListener('mousemove', e => onDragMove(e.clientX));
+window.addEventListener('mouseup', onDragEnd);
+holder.addEventListener('touchstart', e => onDragStart(e.touches[0].clientX), { passive:true });
+holder.addEventListener('touchmove', e => onDragMove(e.touches[0].clientX), { passive:true });
+holder.addEventListener('touchend', onDragEnd);
 
+
+/* ============================================================
+   PROFILE FORM & SUPABASE INTEGRATION
+============================================================ */
 let selectedCharacter = CHARACTERS[0].id;
 let selectedAccessory = ACCESSORIES[0].id;
 
@@ -400,6 +631,8 @@ CHARACTERS.forEach(c => {
     selectedCharacter = c.id;
     applyCharacter(c.id);
     [...charGrid.children].forEach(el => el.classList.toggle('selected', el.dataset.id === c.id));
+    const circle = btn.querySelector('.swatch-circle');
+    circle.classList.remove('pop'); void circle.offsetWidth; circle.classList.add('pop');
   });
   charGrid.appendChild(btn);
 });
@@ -414,30 +647,86 @@ ACCESSORIES.forEach(a => {
     selectedAccessory = a.id;
     applyAccessory(a.id);
     [...accGrid.children].forEach(el => el.classList.toggle('selected', el.dataset.id === a.id));
+    const circle = btn.querySelector('.swatch-circle');
+    circle.classList.remove('pop'); void circle.offsetWidth; circle.classList.add('pop');
   });
   accGrid.appendChild(btn);
 });
 
-[...charGrid.children][0].classList.add('selected');
-[...accGrid.children][0].classList.add('selected');
+function markSelected(){
+  [...charGrid.children].forEach(el => el.classList.toggle('selected', el.dataset.id === selectedCharacter));
+  [...accGrid.children].forEach(el => el.classList.toggle('selected', el.dataset.id === selectedAccessory));
+  applyCharacter(selectedCharacter);
+  applyAccessory(selectedAccessory);
+}
+markSelected();
 
 const firstNameInput = document.getElementById('first-name');
 const lastNameInput = document.getElementById('last-name');
 const nameWarn = document.getElementById('name-warn');
+const welcomeBack = document.getElementById('welcome-back');
 
-document.getElementById('enter-btn').addEventListener('click', () => {
+async function loadSavedProfile(){
+  try{
+    const res = await window.storage.get('profile', false);
+    if(res && res.value){
+      const p = JSON.parse(res.value);
+      firstNameInput.value = p.first || '';
+      lastNameInput.value = p.last || '';
+      if(p.character) selectedCharacter = p.character;
+      if(p.accessory) selectedAccessory = p.accessory;
+      markSelected();
+      if(p.first){
+        welcomeBack.textContent = `ยินดีต้อนรับกลับ, ${p.first}! แก้ไขข้อมูลได้ตามใจเลยนะ`;
+        welcomeBack.style.display = 'block';
+      }
+    }
+  } catch(err){
+    // no saved profile yet on this device/session — that's fine
+  }
+}
+loadSavedProfile();
+
+document.getElementById('enter-btn').addEventListener('click', async () => {
   const first = firstNameInput.value.trim();
   const last = lastNameInput.value.trim();
-
   if(!first || !last){
     nameWarn.style.display = 'block';
+    [firstNameInput, lastNameInput].forEach(inp => {
+      if(!inp.value.trim()){
+        inp.classList.remove('shake'); void inp.offsetWidth; inp.classList.add('shake');
+      }
+    });
     return;
   }
   nameWarn.style.display = 'none';
 
-  // บันทึกลง localStorage เพื่อให้หน้าเกมดึงข้อมูลไปบันทึก Supabase ต่อได้ทันที
-  localStorage.setItem('player_firstname', first);
-  localStorage.setItem('player_lastname', last);
+  // --- เพิ่มระบบหลังบ้าน: บันทึกชื่อและคะแนนเริ่มต้นลงในตาราง game บน Supabase ---
+  try {
+    const { data, error } = await supabaseClient
+      .from('game')
+      .insert([
+        { 
+          first_name: first, 
+          last_name: last, 
+          score: 0 
+        }
+      ]);
+    if (error) {
+      console.error('Supabase Error:', error.message);
+    }
+  } catch(err) {
+    console.error('Connection Error:', err);
+  }
+  // --------------------------------------------------------------------------
+
+  try{
+    await window.storage.set('profile', JSON.stringify({
+      first, last, character: selectedCharacter, accessory: selectedAccessory
+    }), false);
+  } catch(err){
+    // storage unavailable — the query string below still carries the data through
+  }
 
   const params = new URLSearchParams({
     first, last, character: selectedCharacter, accessory: selectedAccessory
